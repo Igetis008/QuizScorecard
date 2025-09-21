@@ -2,8 +2,15 @@ import React, { useState } from 'react';
 import { User, Lock, LogIn, UserPlus } from 'lucide-react';
 import { apiService } from '../../services/api';
 
+// Define what a User looks like (adjust according to your backend)
+interface UserType {
+  id: string;
+  username: string;
+  token: string;
+}
+
 interface LoginFormProps {
-  onLogin: (user: any) => void;
+  onLogin: (user: UserType) => void;
 }
 
 export function LoginForm({ onLogin }: LoginFormProps) {
@@ -12,6 +19,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,11 +27,16 @@ export function LoginForm({ onLogin }: LoginFormProps) {
     setError('');
 
     try {
-      const response = isLogin 
+      const response = isLogin
         ? await apiService.login(username, password)
         : await apiService.register(username, password);
-      
+
+      if (!response?.user) {
+        throw new Error('Invalid server response');
+      }
+
       onLogin(response.user);
+      localStorage.setItem('auth', JSON.stringify(response.user)); // persist session
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
@@ -34,6 +47,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+        {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mb-4">
             <User className="w-8 h-8 text-white" />
@@ -46,13 +60,16 @@ export function LoginForm({ onLogin }: LoginFormProps) {
           </p>
         </div>
 
+        {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
             {error}
           </div>
         )}
 
+        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Username */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Username
@@ -64,12 +81,14 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
+                autoFocus
                 className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 placeholder="Enter your username"
               />
             </div>
           </div>
 
+          {/* Password */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Password
@@ -77,16 +96,24 @@ export function LoginForm({ onLogin }: LoginFormProps) {
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 placeholder="Enter your password"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500 hover:text-gray-700"
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
             </div>
           </div>
 
+          {/* Submit */}
           <button
             type="submit"
             disabled={loading}
@@ -106,6 +133,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
           </button>
         </form>
 
+        {/* Toggle login/register */}
         <div className="mt-6 text-center">
           <button
             onClick={() => setIsLogin(!isLogin)}

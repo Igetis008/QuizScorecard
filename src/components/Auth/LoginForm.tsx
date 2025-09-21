@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { User, Lock, LogIn, UserPlus } from 'lucide-react';
-import { apiService } from '../../services/api';
 
-// Define what a User looks like (adjust according to your backend)
+// Define what a User looks like (matches backend response)
 interface UserType {
   id: string;
   username: string;
@@ -27,16 +26,34 @@ export function LoginForm({ onLogin }: LoginFormProps) {
     setError('');
 
     try {
-      const response = isLogin
-        ? await apiService.login(username, password)
-        : await apiService.register(username, password);
+      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
 
-      if (!response?.user) {
+      const res = await fetch(`http://localhost:3001${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Invalid credentials or server error');
+      }
+
+      const data = await res.json();
+
+      if (!data?.user || !data?.token) {
         throw new Error('Invalid server response');
       }
 
-      onLogin(response.user);
-      localStorage.setItem('auth', JSON.stringify(response.user)); // persist session
+      const userData: UserType = {
+        id: data.user.id,
+        username: data.user.username,
+        token: data.token,
+      };
+
+      // Save session
+      localStorage.setItem('auth', JSON.stringify(userData));
+      onLogin(userData);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
